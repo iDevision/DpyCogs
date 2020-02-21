@@ -3,3 +3,4 @@ venv
 __pycache__
 server/static/test*
 cog.db
+**/*.tar.gz
