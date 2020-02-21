@@ -1,4 +1,5 @@
 import difflib
+import os.path
 from tornado import web
 from ._utils import get_file_and_hash
 
@@ -6,22 +7,30 @@ class CogFetcher(web.RequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    async def get(self):
-        c = self.application.db.cursor()
-        sel = self.get_body_argument("query")
-        c.execute("SELECT hash FROM files WHERE name=?", (sel,))
-        get = c.findone()
-        if not get:
+    async def get(self, hash):
+        print('getting', hash)
+        if not os.path.isfile('server/static/'+hash+'.tar.gz'):
+            print("not found")
             self.set_status(404)
-            await self.finish({"error":"found nothing by that argument"})
+            await self.finish({"error":"nothing found"})
             return
+        print("found file")
+        c = self.application.db.cursor()
+        c.execute("SELECT name FROM files WHERE hash=?;", (hash,))
+        get = c.fetchone()
+        if not get:
+            print("not in db")
+            self.set_status(400)
+            await self.finish({"error":"file was not found in the database"})
+            return
+        get = get[0]
         self.set_status(200)
-        hsh, data = get_file_and_hash(get)
+        hsh, data = get_file_and_hash(hash)
         self.set_header("X-File-Hash", hsh)
-        self.set_header("X-File-Name", get)
+        self.set_header("X-Cog-Name", get)
         self.set_header("Content-Type", "application/gzip")
         await self.finish(data)
 
 def setup(app):
-    app.add_handlers('.*', [('/fetch', CogFetcher)])
+    app.add_handlers('.*', [('/fetch/([a-fA-F0-9]{64})\.tar\.gz', CogFetcher)])
 
