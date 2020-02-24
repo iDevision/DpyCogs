@@ -8,13 +8,11 @@ class CogFetcher(web.RequestHandler):
         super().__init__(*args, **kwargs)
 
     async def get(self, hash):
-        print('getting', hash)
         if not os.path.isfile('server/static/'+hash+'.tar.gz'):
             print("not found")
             self.set_status(404)
             await self.finish({"error":"nothing found"})
             return
-        print("found file")
         c = self.application.db.cursor()
         c.execute("SELECT name FROM files WHERE hash=?;", (hash,))
         get = c.fetchone()
